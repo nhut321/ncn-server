@@ -1,28 +1,34 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const jwt = require('jsonwebtoken')
+require('dotenv').config()
 
 const AccountController = function () {
   this.register = async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
     try {
-      const user = new User.find({ email });
+      const user = await User.findOne({ email });
+
+
+      // console.log(user)
 
       if (!user) {
-        bcrypt.genSalt(10, function (err, salt) {
-          bcrypt.hash(password, salt, function (err, hash) {
-            // Store hash in your password DB.
-            password = hash;
-            user.save();
+        // res.json('dang ky thanh cong')
+        bcrypt.genSalt(10, (err, salt) => {
+          bcrypt.hash(password, salt, (err, hash) => {
+            //Store has in your password DB.
+            password = hash
+            const newUser = new User({ email, password })
+            newUser.save()
             res.json({
               status: 200,
-              message: "Đăng ký thành công",
-            });
-          });
-        });
+              message: 'Dang ky thanh cong'
+            })
+          })
+        })
       } else {
-        req.json({
-            status: 300,
-            message: "Email already exist"
+        res.json({
+          message: 'Tai khoan da ton tai'
         })
       }
     } catch (err) {
@@ -35,12 +41,31 @@ const AccountController = function () {
 
   this.login = async (req, res) => {
     const { email, password } = req.body;
-    const user = await new User.find({ email });
     try {
-      res.json("login");
-      // bcrypt.compare(user.password, hash, function(err, res) {
-      //     console.log(res)
-      // });
+      const user = await User.findOne({ email });
+      if (!user) {
+        res.json({
+          status: 300,
+          message: "Email or password incorrect!!!"
+        })
+      } else {
+        // res.json(user.password)
+        bcrypt.compare(password, user.password, function (err, result) {
+          if (result) {
+            const token = jwt.sign({ email: user.email }, process.env.PKEY)
+            res.json({
+              status: 200,
+              message: "Dang nhap thanh cong",
+              token
+            })
+          } else {
+            res.json({
+              status: 300,
+              message: "Email or password incorrect!!!"
+            })
+          }
+        });
+      }
     } catch (err) {
       res.json({
         status: 400,
